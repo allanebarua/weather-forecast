@@ -25,9 +25,12 @@ def get_aggregated_weather_forecast(request, city):
     http://127.0.0.1:8000/api/locations/{city_name}/?days={no_of_days}
 
     The API then computes the maximum temperature, minimum temperature,
-    average temperature and median temperature using data querried from
+    average temperature, and median temperature using data querried from
     a public API (http://api.weatherapi.com/v1/forecast.json) then returns
-    a consolidated dictionary with the information to the client;
+    a response with the below structure;
+
+    Limitations
+    - THe API can only generate forecasts for a maximum of 14 days.
 
     Sample return payload:
         {
