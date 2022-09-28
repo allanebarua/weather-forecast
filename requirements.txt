@@ -1,0 +1,11 @@
+django==4.0.4
+djangorestframework==3.13.1
+requests==2.28.1
+ipython==8.3.0
+flake8==4.0.1
+flake8_docstrings==1.6.0
+tox==3.25.0
+pytest_django==4.5.2
+pytest_cov==3.0.0
+coverage==6.3.2
+model_bakery==1.5.0
