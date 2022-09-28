@@ -3,20 +3,18 @@ import base64
 import random
 from unittest.mock import MagicMock, patch
 
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import User
+from django.contrib.auth import hashers, models
 from django.urls import reverse
 from model_bakery import baker
-from requests import ConnectionError
-from requests.exceptions import HTTPError
-from rest_framework import HTTP_HEADER_ENCODING, status
-from rest_framework.test import APITestCase
+from requests import ConnectionError, exceptions
+from rest_framework import HTTP_HEADER_ENCODING, status, test
 
 
-def create_admin_user_account():
+def create_test_user_account():
     """Create a system user."""
     return baker.make(
-        User, username='tester', password=make_password('123'))
+        models.User, username='tester',
+        password=hashers.make_password('123'))
 
 
 def add_auth_credentials(client):
@@ -30,22 +28,22 @@ def add_auth_credentials(client):
     return client
 
 
-class WeatherForecastAPITests(APITestCase):
+class WeatherForecastAPITests(test.APITestCase):
     """Test Class for Weather forecasting API."""
 
     def setUp(self):
         """Create API user."""
-        self.admin = create_admin_user_account()
+        self.test_user = create_test_user_account()
 
     def test_unauthenticated_client(self):
         """Attempt to access the API via an unauthorized client."""
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_authenticated_client__days_not_supplied(self):
         """Attempt to access the API without supplying the number of days."""
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
 
@@ -54,7 +52,7 @@ class WeatherForecastAPITests(APITestCase):
 
     def test_more_than_14_days_supplied(self):
         """Attemp to get forecast for more that 14 days in the future."""
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=20'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -64,7 +62,7 @@ class WeatherForecastAPITests(APITestCase):
 
     def test_less_than_one_days_provided(self):
         """Attemp to get forecast for more that 14 days in the future."""
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=-1'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -74,7 +72,7 @@ class WeatherForecastAPITests(APITestCase):
 
     def test_non_numeric_value_passed_as_number_of_days(self):
         """Attemp to access the API using an invalid number of days."""
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=xyz'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -82,24 +80,22 @@ class WeatherForecastAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, 'Invalid number of days provided.')
 
-    @patch('api.views.LOGGER')
     @patch('api.views.requests')
-    def test_public_api_throws_a_connection_error(self, requests_mock, logger_mock):
+    def test_public_api_throws_a_connection_error(self, requests_mock):
         """Test Connection error."""
         requests_mock.get.side_effect = ConnectionError('errrr!')
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=10'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @patch('api.views.LOGGER')
     @patch('api.views.requests')
-    def test_public_api_throws_a_httperror(self, requests_mock, logger_mock):
+    def test_public_api_throws_a_httperror(self, requests_mock):
         """Test HTTPError."""
-        exc = HTTPError('errrr!')
+        exc = exceptions.HTTPError('errrr!')
         exc.response = MagicMock()
         exc.response.json.return_value = {
             'error': {'code': 5000, 'message': 'Business error'}
@@ -107,7 +103,7 @@ class WeatherForecastAPITests(APITestCase):
 
         requests_mock.get.side_effect = exc
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=10'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -115,19 +111,18 @@ class WeatherForecastAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, 'Business error')
 
-    @patch('api.views.LOGGER')
     @patch('api.views.requests')
     def test_public_api_throws_a_httperror_with_non_json_response(
-            self, requests_mock, logger_mock):
+            self, requests_mock):
         """Test response for unserializable HTTPError."""
-        exc = HTTPError('errrr!')
+        exc = exceptions.HTTPError('errrr!')
         exc.response = MagicMock()
         exc.response.json.side_effect = Exception()
         exc.response.reason = 'Not found'
 
         requests_mock.get.side_effect = exc
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=10'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -137,12 +132,12 @@ class WeatherForecastAPITests(APITestCase):
 
     @patch('api.views.requests')
     def test_construct_forecast_payload_fails(self, requests_mock):
-        """Test unespected api response."""
+        """Test un-expected api response."""
         malformed_api_response = MagicMock()
         malformed_api_response.json.return_value = {}
         requests_mock.get.return_value = malformed_api_response
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=5'
         self.client = add_auth_credentials(self.client)
         response = self.client.get(url)
@@ -183,7 +178,7 @@ class WeatherForecastAPITests(APITestCase):
         requests_mock.get.return_value = api_response
 
         # The median temperature will be average temperature
-        # recorded at the 12th hour and 13th hour of the 2nd day.
+        # recorded at the 12th hour and 13th hour of the 3rd day.
         temp_sum = FORECAST_DATA['forecast'][
             'forecastday'][2]['hour'][11]['temp_c'] + FORECAST_DATA['forecast'][
             'forecastday'][2]['hour'][12]['temp_c']
@@ -215,7 +210,7 @@ class WeatherForecastAPITests(APITestCase):
             'median': expected_median,
         }
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=5'
         self.client = add_auth_credentials(self.client)
         actual_response = self.client.get(url)
@@ -263,7 +258,7 @@ class WeatherForecastAPITests(APITestCase):
             }
         }
 
-        # Avegare temperature recorded on the 11th and 12th hour.
+        # Avegare temperature recorded at the 11th and 12th hour.
         expected_median = round((3.8 + 8.3) / 2, 1)
 
         # Highest hourly temperature within the the day
@@ -285,7 +280,7 @@ class WeatherForecastAPITests(APITestCase):
         api_response.json.return_value = FORECAST_DATA
         requests_mock.get.return_value = api_response
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=5'
         self.client = add_auth_credentials(self.client)
         actual_response = self.client.get(url)
@@ -323,7 +318,7 @@ class WeatherForecastAPITests(APITestCase):
         api_response.json.return_value = FORECAST_DATA
         requests_mock.get.return_value = api_response
 
-        # The median temperature will be average temperature
+        # The median temperature will be the average temperature
         # recorded at the last hour of the 1st day and the 1st hour
         # of the 2nd day.
         temp_sum = FORECAST_DATA['forecast'][
@@ -331,7 +326,7 @@ class WeatherForecastAPITests(APITestCase):
             'forecastday'][1]['hour'][0]['temp_c']
         expected_median = round(temp_sum / 2, 1)
 
-        url = reverse('list-weather', args=('LONDON', ))
+        url = reverse('list-forecast', args=('LONDON', ))
         url = url + '?days=5'
         self.client = add_auth_credentials(self.client)
         actual_response = self.client.get(url)
