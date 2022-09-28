@@ -20,7 +20,8 @@ def get_aggregated_weather_forecast(request, city):
     """Get aggregate city-specific weather forecast over a period of time.
 
     The API endpoint expects the client to provide the city name as part
-    of the url and the number of days as a query parameter as below;
+    of the url and the number of days as a query parameter as illustrated
+    below;
 
     http://127.0.0.1:8000/api/locations/{city_name}/?days={no_of_days}
 
@@ -29,16 +30,16 @@ def get_aggregated_weather_forecast(request, city):
     a public API (http://api.weatherapi.com/v1/forecast.json) then returns
     a response with the below structure;
 
-    Limitations
-    - THe API can only generate forecasts for a maximum of 14 days.
-
-    Sample return payload:
+    Returns:
         {
             'maximum': 20.0,
             'minimum': 10.0,
             'average': 15.0,
             'median': 12.0,
         }
+
+    Limitations
+    - THe API can only generate forecasts for a maximum of 14 days.
     """
     is_valid, data = validate_days(request.query_params.get('days'))
     if not is_valid:
