@@ -4,7 +4,7 @@ Background
 ---------------
 This project provides an API that analyzes forecasted weather conditions based on the data provided by the https://www.weatherapi.com/ public API.
 
-The API computes the minimum, maximum, average and median temperatures in degrees celcius for a given geographical location over a given number of subsequent days. To achive this, the API relies upon the data provided by the weather forecast API endpoint (http://api.weatherapi.com/v1/forecast.json) which provides weather forecast up to a maximum of 14 days.
+The API computes the minimum, maximum, average and median temperatures in degrees celcius for a given geographical location over a given number of consecutive days. To achive this, the API relies upon the data provided by the weather forecast API endpoint (http://api.weatherapi.com/v1/forecast.json) which provides weather forecast up to a maximum of 14 days.
 
 TO-DO: The functionality of the API can be extended to include more futuristict weather predictions by incorparating the data provided by the Future API (http://api.weatherapi.com/v1/future.json)
 
@@ -21,7 +21,7 @@ Getting Started
 
 *Assumes a \*nix setup
 
-1. Install git, python3, pip, virtualenv in your system. For example in ubuntu::
+1. Install git, python3, and pip in your system. For example in ubuntu;
 
     ```
     sudo apt update
@@ -31,7 +31,7 @@ Getting Started
 
 2. Clone this project: ``git clone https://github.com/allanebarua/weather-forecast.git``
 
-4. Create and start using a local environment::
+4. Create and start using a local environment
     ```
     cd weather-forecast
     python3 -m venv forecast-venv
